@@ -99,32 +99,40 @@ namespace Interpreter
                     Token nextToken = GetNextToken(ref i, tree);
                     if (nextToken.type == TokenType.EQUAL)
                     {
-                        ArichmetichTree arTree = new ArichmetichTree(nextToken, currentToken as TokenVariable);
-
-                        while (true)
+                        ArichmetichTree arTree = new ArichmetichTree(currentToken as TokenVariable);
+                        tree.next = arTree;
+                        nextToken = GetNextToken(ref i, tree);
+                        while (nextToken.type != TokenType.END_OP)
                         {
-                            currentToken = GetNextToken(ref i, tree);
-                            TokenType type = currentToken.type;
-                            if (type != TokenType.VARIABLE && type != TokenType.NUMERIC_CONST)
-                                throw new Exception("Not correct arichmetic expression. Line: " + i.ToString());
-
+                            arTree.PutToken(nextToken);
                             nextToken = GetNextToken(ref i, tree);
-                            type = nextToken.type;
-                            if (type == TokenType.PLUS || type == TokenType.MINUS)
-                            {
-                                arTree.PutInTree(currentToken, nextToken);
-                            }
-                            else if (type == TokenType.END_OP)
-                            {
-                                arTree.PutInTree(currentToken);
-                                break;
-                            }
-                            else
-                                throw new Exception("Not correct arichmetic expression. Line: " + i.ToString());
+                            TokenType type = nextToken.type;
                         }
-                        arTree.ProcessTree(tree);
+                        //while (true)
+                        //{
+                        //    currentToken = GetNextToken(ref i, tree);
+                        //    TokenType type = currentToken.type;
+                        //    if (type != TokenType.VARIABLE && type != TokenType.NUMERIC_CONST)
+                        //        throw new Exception("Not correct arichmetic expression. Line: " + i.ToString());
+
+                        //    nextToken = GetNextToken(ref i, tree);
+                        //    type = nextToken.type;
+                        //    if (type == TokenType.PLUS || type == TokenType.MINUS)
+                        //    {
+                        //        arTree.PutInTree(currentToken, nextToken);
+                        //    }
+                        //    else if (type == TokenType.END_OP)
+                        //    {
+                        //        arTree.PutInTree(currentToken);
+                        //        break;
+                        //    }
+                        //    else
+                        //        throw new Exception("Not correct arichmetic expression. Line: " + i.ToString());
+                        //}
                     }
                 }
+                tree.next.Process(tree);
+                tree.next = null;
             }
         }
 

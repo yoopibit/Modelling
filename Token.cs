@@ -6,7 +6,9 @@ using System.Threading.Tasks;
 
 namespace Interpreter
 {
-    enum TokenType { VARIABLE, NUMERIC_CONST, PLUS, MINUS, EQUAL, FUNCTION,EOF, END_OP};
+    enum TokenType { VARIABLE, NUMERIC_CONST, PLUS, MINUS, EQUAL, FUNCTION,
+        ARITHMETIC_BRACKET_OPEN, ARITHMETIC_BRACKET_CLOSE,
+        MULTIPLICATION, DIVIDE, EOF, END_OP};
     class Token
     {
         public TokenType type;
