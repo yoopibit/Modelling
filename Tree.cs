@@ -13,84 +13,12 @@ namespace Interpreter
     
     abstract class ProcessTree : Tree
     {
-        abstract public void Process(TreeFunction treeFunction);
+        abstract public object Process(TreeFunctional treeFunction);
     }
 
 
     class ArichmetichTree : ProcessTree
     {
-
-
-        //public ArichmetichTree left;
-        //public ArichmetichTree right;
-        //public ArichmetichTree(Token head, Token token)
-        //{
-        //    this.head = head;
-        //    if (token != null)
-        //        this.left = new ArichmetichTree(token, null);
-        //    else
-        //        this.left = null;
-        //    right = null;
-        //}
-        //public void PutInTree(Token tokenVar, Token TokenOp)
-        //{
-        //    ArichmetichTree currentTree = this;
-        //    while (currentTree.right != null)
-        //        currentTree = currentTree.right;
-
-        //    currentTree.right = new ArichmetichTree(TokenOp, tokenVar);
-        //}
-
-        //public void PutInTree(Token lastVar)
-        //{
-        //    ArichmetichTree currentTree = this;
-
-        //    while (currentTree.right != null)
-        //        currentTree = currentTree.right;
-
-        //    currentTree.right = new ArichmetichTree(lastVar, null);
-
-        //}
-
-        //public override void Process(TreeFunction tree) // tree for update var
-        //{
-        //    TokenType type = this.right.head.type;
-        //    double res;
-        //    if (type == TokenType.NUMERIC_CONST || type == TokenType.VARIABLE)
-        //        res = (double)(this.right.head as TokenNumeric).data;
-        //    else
-        //        res = Calculate(this.right);
-        //    tree.UpdateVar((this.left.head as TokenVariable).name, res);
-        //}
-
-        //private double Calculate(ArichmetichTree tree) // Refactor! 
-        //{
-        //    if (tree.head.type == TokenType.NUMERIC_CONST || tree.head.type == TokenType.VARIABLE)
-        //    {
-        //        if (tree.head.type == TokenType.VARIABLE)
-        //            return (double)(tree.head as TokenVariable).data;
-
-        //        if (tree.head.type == TokenType.NUMERIC_CONST)
-        //            return (double)(tree.head as TokenConst).data;
-        //    }
-
-        //    if (tree.head.type == TokenType.PLUS)
-        //    {
-        //        TokenType type = tree.left.head.type;
-        //        if (type == TokenType.VARIABLE || type == TokenType.NUMERIC_CONST)
-        //            return (double)(tree.left.head as TokenNumeric).data + Calculate(tree.right);
-        //    }
-
-        //    if (tree.head.type == TokenType.MINUS)
-        //    {
-        //        TokenType type = tree.left.head.type;
-        //        if (type == TokenType.VARIABLE || type == TokenType.NUMERIC_CONST)
-        //            return (double)(tree.left.head as TokenNumeric).data - Calculate(tree.right);
-        //    }
-
-        //    throw new Exception("Something bad in Calculate arichmetic tree!");
-        //}
-
         List<Token> infixNotation;
         List<Token> reversePolishNotation;
         Stack<Token> stack;
@@ -118,7 +46,8 @@ namespace Interpreter
                         this.reversePolishNotation.Add(token);
                         break;
                     case TokenType.ARITHMETIC_BRACKET_OPEN:
-                        this.reversePolishNotation.Add(token);
+                        //this.reversePolishNotation.Add(token);
+                        this.stack.Push(token);
                         break;
                     case TokenType.ARITHMETIC_BRACKET_CLOSE:
                         var stackToken = stack.Pop();
@@ -137,7 +66,8 @@ namespace Interpreter
                         break;
                 }
             }
-            for (int i = 0; i < stack.Count; i++)
+            int stackCount = stack.Count;            
+            for (int i = 0; i < stackCount; i++)
             {
                 reversePolishNotation.Add(stack.Pop());
             }
@@ -159,7 +89,7 @@ namespace Interpreter
                     throw new Exception("something bad in get priority!");
             }
         }
-        public override void Process(TreeFunction treeFunction)
+        public override object Process(TreeFunctional treeFunction)
         {
             MakeReversePolishNotation();
 
@@ -191,19 +121,82 @@ namespace Interpreter
                         throw new Exception("something bad in get priority!");
                 }
             }
-            treeFunction.UpdateVar(tokenToChange.name, (stack.Pop() as TokenNumeric).data);
+            object data = (stack.Pop() as TokenNumeric).data;
+            if (tokenToChange != null && treeFunction != null)
+               treeFunction.UpdateVar(tokenToChange.name, data, VariableType.NUMERIC);
+
+            return data;
         }
     }
 
-    class TreeFunction : Tree
+    class StringTree : ProcessTree
+    {
+        TokenVariable tokenToChange;
+        List<TokenVariable> strings;
+        public StringTree(TokenVariable tokenToChange)
+        {
+            if (tokenToChange.varType == VariableType.NUMERIC)
+                throw new Exception("Something bad in constructor in String tree!");
+
+            this.tokenToChange = tokenToChange;
+            strings = new List<TokenVariable>();
+        }
+
+        public void AddToken(TokenVariable token)
+        {
+            if (token.varType == VariableType.STRING)
+            {
+                strings.Add(token);
+            }
+            else
+            {
+                throw new Exception("Something bad in constructor in String tree!");
+            }
+        }
+
+        public override object Process(TreeFunctional treeFunction)
+        {
+            string str = "";
+            foreach (var token in strings)
+            {
+                str += (string)token.data;
+            }
+
+            treeFunction.UpdateVar(tokenToChange.name, str, VariableType.STRING);
+            return str;
+        }
+    }
+
+    class TreeFunctional : Tree
     {
         public ProcessTree next;
         public string name;
         private Dictionary<string, TokenVariable> stackVariable;
-        public TreeFunction(string name, int startPos, int endPos)
+        public TreeFunctional()
+        {
+            this.name = null;
+            this.head = null;
+            this.next = null;
+        }
+        public TreeFunctional(string name, TokenType type, int startPos, int endPos)
         {
             this.name = name;
-            this.head = new TokenFunction(startPos, endPos);
+            Token token;
+            switch (type)
+            {
+                case TokenType.FUNCTION:
+                    token = new TokenFunction(startPos, endPos);
+                    break;
+                case TokenType.IF:
+                    token = new TokenIf(startPos, endPos);
+                    break;
+
+                default:
+                    token = null;
+                    break;
+            }
+
+            this.head = token;
             this.next = null;
             this.stackVariable = new Dictionary<string, TokenVariable>();
         }
@@ -215,9 +208,63 @@ namespace Interpreter
         {
             return stackVariable[name];
         }
-        public void UpdateVar(string name, object data)
+        public bool VariableExist(string name)
+        {
+            return stackVariable.ContainsKey(name);
+        }
+        public void UpdateVar(string name, object data, VariableType varType)
         {
             stackVariable[name].data = data;
+            stackVariable[name].varType = varType;
         }
+    }
+    class TreeIf : TreeFunctional
+    {
+        private ArichmetichTree arichmeticTree;
+
+        public TreeIf(TokenIf ifToken):base()
+        {
+            this.head = ifToken;
+            this.arichmeticTree = new ArichmetichTree(null);
+        }
+
+        /// <summary>
+        /// if i < 2 is true expected token with type NUMERIC_CONST and data is 1
+        /// </summary>
+        /// <param name="token"></param>
+        public void PutTokenInStatement (Token token)
+        {
+            switch (token.type)
+            {
+                case TokenType.ARITHMETIC_BRACKET_OPEN:
+                case TokenType.ARITHMETIC_BRACKET_CLOSE:
+                case TokenType.VARIABLE:
+                case TokenType.NUMERIC_CONST:
+                    arichmeticTree.PutToken(token);
+                    break;
+
+                case TokenType.OR:
+                    arichmeticTree.PutToken(new Token() { type = TokenType.PLUS });
+                    break;
+
+                case TokenType.AND:
+                    arichmeticTree.PutToken(new Token() { type = TokenType.MULTIPLICATION });
+                    break;
+
+                default:
+                    throw new Exception("Something bad in if statement!");
+                    break;
+            }
+        }
+
+        public bool ProcessStatement()
+        {
+            double res = (double)arichmeticTree.Process(null);
+            double precision = 0.1;
+            if (Math.Abs(res) - precision < 0)
+                return false;
+            return true;
+        }
+
     }
 }

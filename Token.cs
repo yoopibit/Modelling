@@ -6,9 +6,10 @@ using System.Threading.Tasks;
 
 namespace Interpreter
 {
-    enum TokenType { VARIABLE, NUMERIC_CONST, PLUS, MINUS, EQUAL, FUNCTION,
-        ARITHMETIC_BRACKET_OPEN, ARITHMETIC_BRACKET_CLOSE,
+    enum TokenType { VARIABLE, NUMERIC_CONST, PLUS, MINUS, ASSIGN, FUNCTION,
+        ARITHMETIC_BRACKET_OPEN, ARITHMETIC_BRACKET_CLOSE, IF, AND, OR, MORE, LESS, EQUAL, NOT_EQUAL,
         MULTIPLICATION, DIVIDE, EOF, END_OP};
+    enum VariableType { NUMERIC, STRING, UNDEFINE};
     class Token
     {
         public TokenType type;
@@ -26,19 +27,23 @@ namespace Interpreter
     class TokenVariable : TokenNumeric
     {
         public string name;//{ get; }
-
+        public VariableType varType;
         public TokenVariable(string name)
         {
             this.type = TokenType.VARIABLE;
             this.name = name;
+            this.data = null;
+            this.varType = VariableType.UNDEFINE;
         }
 
     }
-
-    class TokenFunction : Token {
-        public int startPos { get; }
-        public int endPos { get; }
-
+    abstract class TokenLogic : Token
+    {
+        public int startPos;
+        public int endPos;
+    }
+    class TokenFunction : TokenLogic
+    {
         public TokenFunction(int startPos, int endPos)
         {
             this.type = TokenType.FUNCTION;
@@ -46,4 +51,15 @@ namespace Interpreter
             this.endPos = endPos;
         }
     }
+
+    class TokenIf : TokenLogic
+    {
+        public TokenIf(int startPos, int endPos)
+        {
+            this.type = TokenType.IF;
+            this.startPos = startPos;
+            this.endPos = endPos;
+        }
+    }
+
 }
