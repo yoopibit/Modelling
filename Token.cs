@@ -6,8 +6,8 @@ using System.Threading.Tasks;
 
 namespace Interpreter
 {
-    enum TokenType { VARIABLE, NUMERIC_CONST, PLUS, MINUS, ASSIGN, FUNCTION,
-        ARITHMETIC_BRACKET_OPEN, ARITHMETIC_BRACKET_CLOSE, IF, AND, OR, MORE, LESS, EQUAL, NOT_EQUAL,
+    enum TokenType { VARIABLE, NUMERIC_CONST, PLUS, MINUS, ASSIGN, FUNCTION, FOR,
+        ARITHMETIC_BRACKET_OPEN, ARITHMETIC_BRACKET_CLOSE, IF, ELSE, AND, OR, MORE, LESS, EQUAL, NOT_EQUAL,
         MULTIPLICATION, DIVIDE, EOF, END_OP};
     enum VariableType { NUMERIC, STRING, UNDEFINE};
     class Token
@@ -52,14 +52,27 @@ namespace Interpreter
         }
     }
 
-    class TokenIf : TokenLogic
+    class TokenIfElse : TokenLogic
     {
-        public TokenIf(int startPos, int endPos)
+        public TokenIfElse(int startPos, int endPos, TokenType type)
         {
-            this.type = TokenType.IF;
+            if (type != TokenType.IF && type != TokenType.ELSE)
+                throw new Exception("Something bad in constructor ifElse token");
+            this.type = type;
             this.startPos = startPos;
             this.endPos = endPos;
         }
     }
 
+    class TokenFor: TokenLogic
+    {
+        public TokenFor(int startPos, int endPos, TokenType type)
+        {
+            if (type != TokenType.FOR)
+                throw new Exception("Something bad in constructor for token");
+            this.type = type;
+            this.startPos = startPos;
+            this.endPos = endPos;
+        }
+    }
 }

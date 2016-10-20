@@ -89,6 +89,23 @@ namespace Interpreter
                     throw new Exception("something bad in get priority!");
             }
         }
+        private void RemoveReverseNotations()
+        {
+            this.reversePolishNotation = null;
+            this.reversePolishNotation = new List<Token>();
+        }
+        public void UpdateValueInInfixNotation(TreeFunctional tree)
+        {
+            this.RemoveReverseNotations();
+            foreach (var token in this.infixNotation)
+            {
+                if (token.type == TokenType.VARIABLE)
+                {
+                    var tokenVar = (token as TokenVariable);
+                    tokenVar.data = tree.GetVar(tokenVar.name).data;
+                }
+            }
+        }
         public override object Process(TreeFunctional treeFunction)
         {
             MakeReversePolishNotation();
@@ -171,7 +188,7 @@ namespace Interpreter
     {
         public ProcessTree next;
         public string name;
-        private Dictionary<string, TokenVariable> stackVariable;
+        public Dictionary<string, TokenVariable> stackVariable;
         public TreeFunctional()
         {
             this.name = null;
@@ -188,7 +205,7 @@ namespace Interpreter
                     token = new TokenFunction(startPos, endPos);
                     break;
                 case TokenType.IF:
-                    token = new TokenIf(startPos, endPos);
+                    token = new TokenIfElse(startPos, endPos, TokenType.IF);
                     break;
 
                 default:
@@ -200,19 +217,19 @@ namespace Interpreter
             this.next = null;
             this.stackVariable = new Dictionary<string, TokenVariable>();
         }
-        public void PutVariableinStack(TokenVariable var)
+        public virtual void PutVariableinStack(TokenVariable var)
         {
             stackVariable.Add(var.name, var);
         }
-        public TokenVariable GetVar(string name)
+        public virtual TokenVariable GetVar(string name)
         {
             return stackVariable[name];
         }
-        public bool VariableExist(string name)
+        public virtual bool VariableExist(string name)
         {
             return stackVariable.ContainsKey(name);
         }
-        public void UpdateVar(string name, object data, VariableType varType)
+        public virtual void UpdateVar(string name, object data, VariableType varType)
         {
             stackVariable[name].data = data;
             stackVariable[name].varType = varType;
@@ -220,51 +237,197 @@ namespace Interpreter
     }
     class TreeIf : TreeFunctional
     {
-        private ArichmetichTree arichmeticTree;
+        protected ArichmetichTree arichmeticStatementTree;
+        public Dictionary<string, TokenVariable> stackVariableLocal;
 
-        public TreeIf(TokenIf ifToken):base()
+        protected TreeIf()
         {
+            this.stackVariableLocal = new Dictionary<string, TokenVariable>();
+        }
+        public TreeIf(TokenIfElse ifToken, TreeFunctional tree):base()
+        {
+            if (tree.head.type == TokenType.IF || tree.head.type == TokenType.FOR)
+            {
+                var tmp = tree as TreeIf;
+                this.stackVariable = tmp.stackVariable;
+                foreach (var item in tmp.stackVariableLocal)
+                {
+                    this.stackVariable.Add(item.Key, item.Value);
+                }
+            }
+            else
+            {
+                this.stackVariable = tree.stackVariable;
+            }
             this.head = ifToken;
-            this.arichmeticTree = new ArichmetichTree(null);
+            this.arichmeticStatementTree = new ArichmetichTree(null);
+            this.stackVariableLocal = new Dictionary<string, TokenVariable>();
         }
 
         /// <summary>
         /// if i < 2 is true expected token with type NUMERIC_CONST and data is 1
         /// </summary>
-        /// <param name="token"></param>
-        public void PutTokenInStatement (Token token)
+        /// <param name="token"></param>  
+        public void PutTokenInStatement (Token token, Token tokenOfOperation, Token rightOperator , int line)
         {
+            double leftData = 0;
+            if (token.type == TokenType.VARIABLE || token.type == TokenType.NUMERIC_CONST)
+                leftData = (double)(token as TokenNumeric).data;
+
             switch (token.type)
             {
                 case TokenType.ARITHMETIC_BRACKET_OPEN:
+                    this.arichmeticStatementTree.PutToken(new Token() { type = TokenType.ARITHMETIC_BRACKET_OPEN });
+                    break;
                 case TokenType.ARITHMETIC_BRACKET_CLOSE:
+                    this.arichmeticStatementTree.PutToken(new Token() { type = TokenType.ARITHMETIC_BRACKET_CLOSE });
+                    break;
                 case TokenType.VARIABLE:
                 case TokenType.NUMERIC_CONST:
-                    arichmeticTree.PutToken(token);
+                    var tokenCondition = tokenOfOperation;
+                    Token nextToken = rightOperator;
+                    double rightData = (double)(nextToken as TokenNumeric).data;
+                    double resultSmallStation = 0;
+                    switch (tokenCondition.type)
+                    {
+                        case TokenType.MORE:
+                            if (leftData > rightData)
+                                resultSmallStation = 1;
+                            else
+                                resultSmallStation = 0;
+                            goto putInStatement;
+
+                        case TokenType.LESS:
+                            if (leftData < rightData)
+                                resultSmallStation = 1;
+                            else
+                                resultSmallStation = 0;
+                            goto putInStatement;
+
+
+                        case TokenType.EQUAL:
+                            if (leftData == rightData)
+                                resultSmallStation = 1;
+                            else
+                                resultSmallStation = 0;
+                            goto putInStatement;
+
+                        case TokenType.NOT_EQUAL:
+                            if (leftData != rightData)
+                                resultSmallStation = 1;
+                            else
+                                resultSmallStation = 0;
+                            goto putInStatement;
+
+
+                        putInStatement:
+                            arichmeticStatementTree.PutToken(new TokenNumeric() { type = TokenType.NUMERIC_CONST, data = resultSmallStation });
+                            break;
+                    }
                     break;
 
                 case TokenType.OR:
-                    arichmeticTree.PutToken(new Token() { type = TokenType.PLUS });
+                    arichmeticStatementTree.PutToken(new Token() { type = TokenType.PLUS });
                     break;
 
                 case TokenType.AND:
-                    arichmeticTree.PutToken(new Token() { type = TokenType.MULTIPLICATION });
+                    arichmeticStatementTree.PutToken(new Token() { type = TokenType.MULTIPLICATION });
                     break;
 
                 default:
-                    throw new Exception("Something bad in if statement!");
-                    break;
+                    throw new Exception("Something went bad in if condition Line:" + line.ToString());
             }
         }
 
-        public bool ProcessStatement()
+        public virtual bool ProcessStatement()
         {
-            double res = (double)arichmeticTree.Process(null);
+            double res = (double)arichmeticStatementTree.Process(null);
             double precision = 0.1;
             if (Math.Abs(res) - precision < 0)
                 return false;
             return true;
         }
 
+        public override void PutVariableinStack(TokenVariable var)
+        {
+            stackVariableLocal.Add(var.name, var);
+        }
+        public override TokenVariable GetVar(string name)
+        {
+            if (stackVariableLocal.ContainsKey(name))
+                return stackVariableLocal[name];
+
+            if (stackVariable.ContainsKey(name))
+                return stackVariable[name];
+
+            return null;
+        }
+        public override bool VariableExist(string name)
+        {
+            if (stackVariable.ContainsKey(name) || stackVariableLocal.ContainsKey(name))
+                return true;
+            return false;
+        }
+        public override void UpdateVar(string name, object data, VariableType varType)
+        {
+            Dictionary<string, TokenVariable> tmp = null;
+            if (stackVariable.ContainsKey(name))
+                tmp = stackVariable;
+            else if (stackVariableLocal.ContainsKey(name))
+                tmp = stackVariableLocal;
+
+            tmp[name].data = data;
+            tmp[name].varType = varType;
+        }
+    }
+    class TreeFor : TreeIf
+    {
+        TokenVariable forVar;
+        ArichmetichTree updateForVar;
+        public bool initForVar = false;
+
+        public TreeFor(TokenFor forToken, TokenVariable forVar, ArichmetichTree updateForVar, TreeFunctional tree) :base()
+        {
+            if (tree.head.type == TokenType.IF || tree.head.type == TokenType.FOR)
+            {
+                var tmp = tree as TreeIf;
+                this.stackVariable = tmp.stackVariable;
+                foreach (var item in tmp.stackVariableLocal)
+                {
+                    this.stackVariable.Add(item.Key, item.Value);
+                }
+            }
+            else
+            {
+                this.stackVariable = tree.stackVariable;
+            }
+            this.head = forToken;
+            this.forVar = forVar;
+            this.updateForVar = updateForVar;
+        }
+        public bool ProcessStatement(List<Token> statCondFor, int line)
+        {
+            this.arichmeticStatementTree = new ArichmetichTree(null);
+
+            for (int i = 0; i < statCondFor.Count; i++)
+            {
+                TokenType type = statCondFor[i].type;
+                if (type == TokenType.VARIABLE || type == TokenType.NUMERIC_CONST)
+                    this.PutTokenInStatement(
+                        statCondFor[i].type == TokenType.VARIABLE ? this.GetVar((statCondFor[i] as TokenVariable).name) : statCondFor[i],
+                        statCondFor[++i], 
+                        statCondFor[++i].type == TokenType.VARIABLE ? this.GetVar((statCondFor[i] as TokenVariable).name) : statCondFor[i], 
+                        line);
+                else
+                    this.PutTokenInStatement(statCondFor[i], null, null, line); 
+            }
+            return this.ProcessStatement();
+        }
+
+        public void ProcessUpdateForVar()
+        {
+            this.updateForVar.UpdateValueInInfixNotation(this);
+            this.updateForVar.Process(this);
+        }
     }
 }
