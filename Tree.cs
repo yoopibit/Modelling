@@ -202,7 +202,7 @@ namespace Interpreter
             switch (type)
             {
                 case TokenType.FUNCTION:
-                    token = new TokenFunction(startPos, endPos);
+                    token = new TokenFunction(null, startPos, endPos);
                     break;
                 case TokenType.IF:
                     token = new TokenIfElse(startPos, endPos, TokenType.IF);
@@ -235,6 +235,7 @@ namespace Interpreter
             stackVariable[name].varType = varType;
         }
     }
+
     class TreeIf : TreeFunctional
     {
         protected ArichmetichTree arichmeticStatementTree;

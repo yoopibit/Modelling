@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -15,14 +14,15 @@ namespace Interpreter
     class Interpreter : IInterpretator
     {
         private string text;
-
-        private RichTextBox richTextBoxResult;
-        //private Dictionary<string, List<Token>> tokensFunstions;
+        private static RichTextBox richTextBoxResult;
         private TreeFunctional mainTree;
         public Interpreter(RichTextBox richTextBoxResult)
         {
-          //  tokensFunstions.Add("main", new List<Token>());
-            this.richTextBoxResult = richTextBoxResult;
+            Interpreter.richTextBoxResult = richTextBoxResult;
+        }
+        public static RichTextBox GetOutput()
+        {
+            return Interpreter.richTextBoxResult;
         }
 
         public object[] Execute(string programText, object[] args)
@@ -35,15 +35,10 @@ namespace Interpreter
         
         void FindMain()
         {
-            string nameMain = "main()";
-            int start = this.text.IndexOf(nameMain) + nameMain.Length;
-            int last = this.text.LastIndexOf(nameMain);
-            if (last + nameMain.Length != start)
-                throw new Exception("Multiplied definition of main");
-            while (this.text[start] == ' ' || this.text[start] == '\n')
-                ++start;
-            int end = EndBracket(start - 1, "main");
-            mainTree = new TreeFunctional("main", TokenType.FUNCTION, start, end);
+            int start = FindFunction("main");
+            while (this.text[++start] != '{') ;
+            int end = start;
+            this.mainTree = new TreeFunctional("main", TokenType.FUNCTION, start, EndBracket(start, "main"));
         }
 
         int EndBracket(int start, string nameFunction)
@@ -74,7 +69,7 @@ namespace Interpreter
             return end;
         }
         
-        void Process(TreeFunctional tree)
+        Token Process(TreeFunctional tree)
         {
             TokenLogic tokenHead = tree.head as TokenLogic; 
             for (int i = tokenHead.startPos + 1; i < tokenHead.endPos;)
@@ -95,11 +90,63 @@ namespace Interpreter
                     case TokenType.FOR:
                         ProcessFor(tree, ref i, ref currentToken);
                         break;
-                }
 
-                tree.next.Process(tree);
+                    case TokenType.FUNCTION:
+                        ProcessFunction(tree, ref i, ref currentToken);
+                        break;
+                }
+                if (tree.next != null)
+                    tree.next.Process(tree);
                 tree.next = null;
             }
+            return null;
+        }
+
+        private Token ProcessFunction(TreeFunctional tree, ref int i, ref Token currentToken)
+        {
+            TokenFunction funcToken = currentToken as TokenFunction;
+            currentToken = GetNextToken(ref i, tree);
+
+            if (BuiltInFunction.IsBuiltIn(funcToken.name))
+            {
+                if (currentToken.type != TokenType.ARITHMETIC_BRACKET_OPEN)
+                {
+                    throw new Exception("Expected open bracket after calling fuction!");
+                }
+                List<TokenNumeric> paramets = new List<TokenNumeric>();
+                currentToken = GetNextToken(ref i, tree);
+                while (currentToken.type != TokenType.ARITHMETIC_BRACKET_CLOSE)
+                {
+                    paramets.Add(currentToken as TokenNumeric);
+                    currentToken = GetNextToken(ref i, tree);
+                }
+                return BuiltInFunction.ProcessFunction(funcToken.name, paramets);
+            }
+            TreeFunctional funcTree = new TreeFunctional(funcToken.name, TokenType.FUNCTION, funcToken.startPos, funcToken.endPos);
+
+            var tokenInDefinition = GetNextToken(ref funcToken.startPos, null);
+            if (tokenInDefinition.type != TokenType.ARITHMETIC_BRACKET_OPEN)
+                throw new Exception("Expected open bracket in callin function" + funcToken.name);
+            currentToken = GetNextToken(ref i, tree);
+            tokenInDefinition = GetNextToken(ref funcToken.startPos, null);
+            while(currentToken.type != TokenType.ARITHMETIC_BRACKET_CLOSE && tokenInDefinition.type != TokenType.ARITHMETIC_BRACKET_CLOSE)
+            {
+                if (currentToken.type == TokenType.NUMERIC_CONST)
+                {
+                    currentToken = (currentToken as TokenConst).ConvertToTokenVariable((tokenInDefinition as TokenVariable).name);
+                }
+                else
+                {
+                    (currentToken as TokenVariable).name = (tokenInDefinition as TokenVariable).name;
+                }
+                funcTree.PutVariableinStack(currentToken as TokenVariable);
+
+                currentToken = GetNextToken(ref i, tree);
+                tokenInDefinition = GetNextToken(ref funcToken.startPos, null);
+            }
+            while (this.text[(funcTree.head as TokenLogic).startPos++] != '{') ;
+
+            return this.Process(funcTree);
         }
 
         private void ProcessFor(TreeFunctional tree, ref int i, ref Token currentToken)
@@ -194,6 +241,8 @@ namespace Interpreter
                     ifTree.PutTokenInStatement(currentToken, null, null, i);
                 }
             }
+            --i;
+            while (this.text[++i] != '{') ;
             (ifTree.head as TokenIfElse).startPos = i;
             i = (ifTree.head as TokenIfElse).endPos + 1;
 
@@ -206,6 +255,9 @@ namespace Interpreter
                 currentToken = GetNextToken(ref i, tree);
                 if (currentToken.type == TokenType.ELSE)
                 {
+                    --i;
+                    while (this.text[++i] != '{') ;
+                    (currentToken as TokenIfElse).startPos = i;
                     ifTree.head = currentToken;
                     Process(ifTree);
                     i = (ifTree.head as TokenIfElse).endPos + 1;
@@ -268,6 +320,12 @@ namespace Interpreter
                 int start = pos;
                 while (char.IsLetter(this.text[++pos])) ;
                 string nameVar = this.text.Substring(start, pos - start);
+                if (BuiltInFunction.IsBuiltIn(nameVar))
+                {
+                    --pos;
+                    while (this.text[++pos] != '(') ;
+                    return new TokenFunction(nameVar, start, pos);
+                }
 
                 switch (nameVar)
                 {
@@ -279,6 +337,7 @@ namespace Interpreter
                         start = pos;
                         while (this.text[++start] != '{') ;
                         return new TokenFor(start, EndBracket(start, "for"), TokenType.FOR); 
+
                     case "AND":
                         return new Token() { type = TokenType.AND };
                     case "OR":
@@ -291,17 +350,34 @@ namespace Interpreter
                         return new Token() { type = TokenType.EQUAL };
                     case "NEQ":
                         return new Token() { type = TokenType.NOT_EQUAL };
+                    case "return":
+                        return new Token() { type = TokenType.RETURN };
                 }
-
-                if (tree.VariableExist(nameVar))
+                int checkBarcket = pos - 1;
+                while (this.text[++checkBarcket] == ' ') ;
+                if (this.text[checkBarcket] == '(')
                 {
-                    return tree.GetVar(nameVar);
+                    start = FindFunction(nameVar);
+                    return new TokenFunction(nameVar, start, EndBracket(start, nameVar));
+                }
+                if (tree == null)
+                {
+                    TokenVariable var = new TokenVariable(nameVar);
+                    return var;
                 }
                 else
                 {
-                    TokenVariable var = new TokenVariable(nameVar);
-                    tree.PutVariableinStack(var);
-                    return var;
+
+                    if (tree.VariableExist(nameVar))
+                    {
+                        return tree.GetVar(nameVar);
+                    }
+                    else
+                    {
+                        TokenVariable var = new TokenVariable(nameVar);
+                        tree.PutVariableinStack(var);
+                        return var;
+                    }
                 }
             }
             if(text[pos] == '=')
@@ -364,6 +440,20 @@ namespace Interpreter
                 return new Token() { type = TokenType.END_OP };
             }
             return null;
+        }
+
+        private int FindFunction(string nameVar)
+        {
+            string functionPattern = "def\\s+" + nameVar;
+            Regex regex = new Regex(functionPattern);
+            Match match = regex.Match(this.text);
+            if (match.Success)
+            {
+                int start = match.Index;
+                while (this.text[++start] != '(') ;
+                return start;
+            }
+            throw new Exception("Not find declaration of function");
         }
     }
 }
