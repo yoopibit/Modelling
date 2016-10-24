@@ -94,6 +94,8 @@ namespace Interpreter
                     case TokenType.FUNCTION:
                         ProcessFunction(tree, ref i, ref currentToken);
                         break;
+                    case TokenType.RETURN:
+                        return GetNextToken(ref i, tree);
                 }
                 if (tree.next != null)
                     tree.next.Process(tree);
@@ -119,6 +121,8 @@ namespace Interpreter
                 {
                     paramets.Add(currentToken as TokenNumeric);
                     currentToken = GetNextToken(ref i, tree);
+                    if (currentToken.type == TokenType.COMA)
+                        currentToken = GetNextToken(ref i, tree);
                 }
                 return BuiltInFunction.ProcessFunction(funcToken.name, paramets);
             }
@@ -143,6 +147,15 @@ namespace Interpreter
 
                 currentToken = GetNextToken(ref i, tree);
                 tokenInDefinition = GetNextToken(ref funcToken.startPos, null);
+                if (currentToken.type == TokenType.COMA && tokenInDefinition.type == TokenType.COMA)
+                {
+                    currentToken = GetNextToken(ref i, tree);
+                    tokenInDefinition = GetNextToken(ref funcToken.startPos, null);
+                }
+                else
+                    if (currentToken.type != TokenType.ARITHMETIC_BRACKET_CLOSE && tokenInDefinition.type != TokenType.ARITHMETIC_BRACKET_CLOSE)
+                        throw new Exception("Expect coma operator in functions paramets");  
+
             }
             while (this.text[(funcTree.head as TokenLogic).startPos++] != '{') ;
 
@@ -253,7 +266,7 @@ namespace Interpreter
             else
             {
                 currentToken = GetNextToken(ref i, tree);
-                if (currentToken.type == TokenType.ELSE)
+                if (currentToken != null && currentToken.type == TokenType.ELSE)
                 {
                     --i;
                     while (this.text[++i] != '{') ;
@@ -273,6 +286,14 @@ namespace Interpreter
                 nextToken = GetNextToken(ref i, tree);
 
                 var type = nextToken.type;
+                if (type == TokenType.FUNCTION)
+                {
+                    nextToken = ProcessFunction(tree, ref i,ref nextToken);
+                    if (nextToken == null)
+                        throw new Exception("Expected return value in function, Line:" + i);
+                    type = nextToken.type;
+                }
+                
 
                 if (type == TokenType.NUMERIC_CONST || type == TokenType.ARITHMETIC_BRACKET_OPEN ||
                     (type == TokenType.VARIABLE && (nextToken as TokenVariable).varType != VariableType.STRING))
@@ -412,6 +433,10 @@ namespace Interpreter
             if (text[pos] == ')')
             {
                 ++pos; return new Token() { type = TokenType.ARITHMETIC_BRACKET_CLOSE };
+            }
+            if (text[pos] == ',')
+            {
+                ++pos; return new Token() { type = TokenType.COMA };
             }
             if (text[pos] == '\"')
             {
