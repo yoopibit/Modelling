@@ -35,17 +35,3 @@ namespace Interpreter
         }
     }
 }
-
-/*
- def f(i)
-{
-   j = i + 2;
-}
-
-def main () 
-{
-  i = f(2);
-  pritn(i);
-}
-
-    */

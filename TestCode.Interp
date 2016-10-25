@@ -1,0 +1,150 @@
+﻿-------------------------------------------
+def main()
+{
+	i = 2;
+	j = 5;
+	k = (i + j) * 2;
+	print("k = ");
+	print(k);
+}
+
+----------------------
+
+def main()
+{
+   start = "hello";
+   hello_world = start + " world!";
+
+   print(hello_world);
+}
+
+------------------------------
+
+def main()
+{
+    k = 2;
+
+	for (i = 0; i LESS 10; i = i + 1)
+	{
+		k = k + 1;
+		print("  k = ");
+		print(k);
+	}
+}
+
+------------------------------
+
+def swap(left, right)
+{
+	tmp = left;
+	left = right;
+	right = tmp;
+}
+
+def main()
+{
+	i = 2;
+	j = 10;
+	swap(i, j);
+
+	print(" i = "); print(i);
+	
+	print(" j = "); print(j);
+}
+
+--------------------------
+
+def factorial(value)
+{
+	result = 1;
+       value = value + 1;
+	for (i = 1; i LESS value; i = i + 1)
+	{
+		result = result * i;
+	}
+	return result;
+}
+
+def main()
+{
+	value = 5;
+	print("factorial of ");
+	print(value);
+	print(" = ");
+
+	print(factorial(value));
+}
+
+----------------------------------
+
+def fact(value, result)
+{
+	if (value EQ 1) {
+		return result;
+	}
+	result = result * value;
+	value = value - 1;
+	return fact(value, result);
+}
+
+def main()
+{
+	value = 5;
+
+	result = 1;
+	
+	print(fact(value, result));
+}
+
+---------------------------------------
+
+def fact(value, result)
+{
+	if (value EQ 1) {
+		return result;
+	}
+	result = result * value;
+	value = value - 1;
+
+	return fact(value, result);
+}
+
+def main()
+{
+	value = 5;
+
+	result = 1;
+	
+	print(fact(value, result));
+}
+
+
+
+
+
+
+def fact(value, result)
+{
+	if (value EQ 1) {
+		return result;
+	}
+	result = result * value;
+	value = value - 1;
+
+	return fact(value, result);
+}
+
+def main()
+{
+       for (i = 1; i LESS 20; i = i + 1)
+       { 
+			value = i;
+			result = 1;
+			print("  Fact of ");
+			print(i);
+			print(" = ");
+			print(fact(value, result));
+			print("            ");
+
+       }
+}

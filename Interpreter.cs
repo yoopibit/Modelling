@@ -84,7 +84,9 @@ namespace Interpreter
                         break;
 
                     case TokenType.IF:
-                        ProcessIfElseStatement(tree, ref i, ref currentToken);
+                        var token = ProcessIfElseStatement(tree, ref i, ref currentToken);
+                        if (token != null)
+                            return token;
                         break;
 
                     case TokenType.FOR:
@@ -95,7 +97,12 @@ namespace Interpreter
                         ProcessFunction(tree, ref i, ref currentToken);
                         break;
                     case TokenType.RETURN:
-                        return GetNextToken(ref i, tree);
+                        currentToken = GetNextToken(ref i, tree);
+                        if (currentToken is TokenLogic)
+                        {
+                            return ProcessFunction(tree, ref i, ref currentToken);
+                        }
+                        return currentToken;
                 }
                 if (tree.next != null)
                     tree.next.Process(tree);
@@ -119,6 +126,10 @@ namespace Interpreter
                 currentToken = GetNextToken(ref i, tree);
                 while (currentToken.type != TokenType.ARITHMETIC_BRACKET_CLOSE)
                 {
+                    if (currentToken is TokenLogic)
+                    {
+                        currentToken = ProcessFunction(tree, ref i, ref currentToken);
+                    }
                     paramets.Add(currentToken as TokenNumeric);
                     currentToken = GetNextToken(ref i, tree);
                     if (currentToken.type == TokenType.COMA)
@@ -220,7 +231,7 @@ namespace Interpreter
             i = (forTree.head as TokenLogic).endPos + 1;
         }
 
-        private void ProcessIfElseStatement(TreeFunctional tree, ref int i, ref Token currentToken)
+        private Token ProcessIfElseStatement(TreeFunctional tree, ref int i, ref Token currentToken)
         {
             TreeIf ifTree = new TreeIf(currentToken as TokenIfElse, tree);
             // process statement
@@ -261,21 +272,27 @@ namespace Interpreter
 
             if (ifTree.ProcessStatement())
             {
-                Process(ifTree);
+                var retToken = Process(ifTree);
+                if (retToken != null) 
+                    return retToken;
             }
             else
             {
-                currentToken = GetNextToken(ref i, tree);
+                int tmp = i;
+                currentToken = GetNextToken(ref tmp, tree);
                 if (currentToken != null && currentToken.type == TokenType.ELSE)
                 {
                     --i;
                     while (this.text[++i] != '{') ;
                     (currentToken as TokenIfElse).startPos = i;
                     ifTree.head = currentToken;
-                    Process(ifTree);
+                    var retToken = Process(ifTree);
+                    if (retToken != null) 
+                        return retToken;
                     i = (ifTree.head as TokenIfElse).endPos + 1;
                 }
             }
+            return null;
         }
 
         private void ProcessVariable(TreeFunctional tree, ref int i, ref Token currentToken)
@@ -333,13 +350,14 @@ namespace Interpreter
         public Token GetNextToken(ref int pos, TreeFunctional tree)
         {
             char tmp = text[pos];
-            while (this.text[pos] == ' ' || this.text[pos] == '\n')
+            while (this.text[pos] == ' ' || this.text[pos] == '\n' || this.text[pos] == '\t')
                 ++pos;
 
             if (char.IsLetter(this.text[pos])) // is var
             {
                 int start = pos;
-                while (char.IsLetter(this.text[++pos])) ;
+                while (char.IsLetter(this.text[++pos]) || this.text[pos] == '_') ;
+
                 string nameVar = this.text.Substring(start, pos - start);
                 if (BuiltInFunction.IsBuiltIn(nameVar))
                 {
