@@ -9,6 +9,35 @@ def main()
 }
 
 ----------------------
+NOT  works!
+def main()
+{
+	i = 2;
+	j = 5;
+	k = (i + j) * 2;
+	print("k = " + str(k));
+}
+-------------------------
+NOT  works!
+def main () 
+{
+    s = str(2);
+    s_new = str(2);
+    
+    print( s + s_new);
+}
+
+----------------------
+
+def main()
+{
+	s = "2";
+	s_new = s + str(2);
+
+	print(s_new);
+}
+
+----------------------
 
 def main()
 {
@@ -118,10 +147,7 @@ def main()
 	print(fact(value, result));
 }
 
-
-
-
-
+---------------------------------------------------------
 
 def fact(value, result)
 {

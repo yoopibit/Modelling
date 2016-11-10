@@ -321,7 +321,12 @@ namespace Interpreter
                     {
                         arTree.PutToken(nextToken);
                         nextToken = GetNextToken(ref i, tree);
-                        type = nextToken.type;
+                        if (nextToken.type == TokenType.FUNCTION)
+                        {
+                            nextToken = ProcessFunction(tree, ref i, ref nextToken);
+                            if (nextToken == null)
+                                throw new Exception("Expected return value in function, Line:" + i);
+                        }
                     }
                 }
                 else
@@ -340,6 +345,12 @@ namespace Interpreter
                             throw new Exception("Expect \'+\' in line:" + i.ToString());
 
                         currentToken = GetNextToken(ref i, tree);
+                        if (currentToken.type == TokenType.FUNCTION)
+                        {
+                            currentToken = ProcessFunction(tree, ref i, ref currentToken);
+                            if (currentToken == null)
+                                throw new Exception("Expected return value in function, Line:" + i);
+                        }
                     }
                 }
                 else
@@ -352,6 +363,7 @@ namespace Interpreter
             char tmp = text[pos];
             while (this.text[pos] == ' ' || this.text[pos] == '\n' || this.text[pos] == '\t')
                 ++pos;
+               
 
             if (char.IsLetter(this.text[pos])) // is var
             {
