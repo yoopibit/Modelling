@@ -123,17 +123,34 @@ namespace Interpreter
                     throw new Exception("Expected open bracket after calling fuction!");
                 }
                 List<TokenNumeric> paramets = new List<TokenNumeric>();
+                int currentPos = i;
                 currentToken = GetNextToken(ref i, tree);
-                while (currentToken.type != TokenType.ARITHMETIC_BRACKET_CLOSE)
+
+                while (currentToken.type != TokenType.ARITHMETIC_BRACKET_CLOSE && currentToken.type != TokenType.END_OP)
                 {
+
                     if (currentToken is TokenLogic)
                     {
                         currentToken = ProcessFunction(tree, ref i, ref currentToken);
                     }
-                    paramets.Add(currentToken as TokenNumeric);
-                    currentToken = GetNextToken(ref i, tree);
-                    if (currentToken.type == TokenType.COMA)
+                    Token nextToken = GetNextToken(ref i, tree);
+
+                    if (nextToken.type != TokenType.COMA && nextToken.type != TokenType.ARITHMETIC_BRACKET_CLOSE)
+                    {
+                        i = currentPos;
+                        ProcessVariable(tree, ref i, ref currentToken, false);
+
+                        (currentToken as TokenNumeric).data = tree.next.Process(null);
+                        tree.next = null;
+                    }
+
+                    if (currentToken.type != TokenType.COMA && currentToken.type != TokenType.ARITHMETIC_BRACKET_CLOSE)
+                        paramets.Add(currentToken as TokenNumeric);
+                    currentPos = i;
+                    if (nextToken.type != TokenType.ARITHMETIC_BRACKET_CLOSE)
                         currentToken = GetNextToken(ref i, tree);
+                    else
+                        currentToken = nextToken;
                 }
                 return BuiltInFunction.ProcessFunction(funcToken.name, paramets);
             }
@@ -295,12 +312,13 @@ namespace Interpreter
             return null;
         }
 
-        private void ProcessVariable(TreeFunctional tree, ref int i, ref Token currentToken)
+        private void ProcessVariable(TreeFunctional tree, ref int i, ref Token currentToken, bool withAssign = true)
         {
             Token nextToken = GetNextToken(ref i, tree);
-            if (nextToken.type == TokenType.ASSIGN)
+            if (nextToken.type == TokenType.ASSIGN || !withAssign)
             {
-                nextToken = GetNextToken(ref i, tree);
+                if (withAssign)
+                    nextToken = GetNextToken(ref i, tree);
 
                 var type = nextToken.type;
                 if (type == TokenType.FUNCTION)
@@ -308,16 +326,19 @@ namespace Interpreter
                     nextToken = ProcessFunction(tree, ref i,ref nextToken);
                     if (nextToken == null)
                         throw new Exception("Expected return value in function, Line:" + i);
+                    (currentToken as TokenVariable).data = (nextToken as TokenRegex).data;
+                    (currentToken as TokenVariable).varType = VariableType.REGEX;
+                    nextToken = GetNextToken(ref i, tree);
                     type = nextToken.type;
                 }
-                
+
 
                 if (type == TokenType.NUMERIC_CONST || type == TokenType.ARITHMETIC_BRACKET_OPEN ||
                     (type == TokenType.VARIABLE && (nextToken as TokenVariable).varType != VariableType.STRING))
                 {
                     ArichmetichTree arTree = new ArichmetichTree(currentToken as TokenVariable);
                     tree.next = arTree;
-                    while (nextToken.type != TokenType.END_OP)
+                    while (nextToken.type != TokenType.END_OP && nextToken.type != TokenType.COMA && nextToken.type != TokenType.ARITHMETIC_BRACKET_CLOSE)
                     {
                         arTree.PutToken(nextToken);
                         nextToken = GetNextToken(ref i, tree);
@@ -334,25 +355,29 @@ namespace Interpreter
                 {
                     StringTree strTree = new StringTree(currentToken as TokenVariable);
                     tree.next = strTree;
-                    currentToken = nextToken;
-                    while (currentToken.type != TokenType.END_OP)
+
+                    while (nextToken.type != TokenType.END_OP && nextToken.type != TokenType.COMA && nextToken.type != TokenType.ARITHMETIC_BRACKET_CLOSE)
                     {
-                        strTree.AddToken(currentToken as TokenVariable);
-                        currentToken = GetNextToken(ref i, tree);
-                        if (currentToken.type == TokenType.END_OP)
+                        strTree.AddToken(nextToken as TokenVariable);
+                        nextToken = GetNextToken(ref i, tree);
+                        if (nextToken.type == TokenType.END_OP || nextToken.type == TokenType.ARITHMETIC_BRACKET_CLOSE)
                             break;
-                        if (currentToken.type != TokenType.PLUS)
+                        
+                        if (nextToken.type != TokenType.PLUS)
                             throw new Exception("Expect \'+\' in line:" + i.ToString());
 
-                        currentToken = GetNextToken(ref i, tree);
-                        if (currentToken.type == TokenType.FUNCTION)
+                        nextToken = GetNextToken(ref i, tree);
+                        if (nextToken.type == TokenType.FUNCTION)
                         {
-                            currentToken = ProcessFunction(tree, ref i, ref currentToken);
-                            if (currentToken == null)
+                            nextToken = ProcessFunction(tree, ref i, ref nextToken);
+                            if (nextToken == null)
                                 throw new Exception("Expected return value in function, Line:" + i);
                         }
                     }
                 }
+                else
+                    if (type == TokenType.END_OP)
+                    return;
                 else
                     throw new Exception("Somethin bad in Process");
             }

@@ -178,8 +178,8 @@ namespace Interpreter
             {
                 str += (string)token.data;
             }
-
-            treeFunction.UpdateVar(tokenToChange.name, str, VariableType.STRING);
+            if (treeFunction != null)
+                treeFunction.UpdateVar(tokenToChange.name, str, VariableType.STRING);
             return str;
         }
     }

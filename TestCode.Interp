@@ -36,6 +36,31 @@ def main()
 
 	print(s_new);
 }
+----------------------
+def main () 
+{
+    pat = "[a-zA-Z]+ (\d+)";
+    s = "the independency day celebrated in  may 32";
+    res = regex(pat, s);
+    print(res);
+}
+
+----------------------
+NOT works!
+def f(result_reg)
+{
+	print("result " + "of " + "regex = ");
+	print(result_reg);
+}
+
+def main () 
+{
+    pat = "[a-zA-Z]+ (\d+)";
+    s = "the independency day celebrated in  may 32";
+    res = regex(pat, s);
+    f(res);
+}
+
 
 ----------------------
 

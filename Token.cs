@@ -9,7 +9,7 @@ namespace Interpreter
     enum TokenType { VARIABLE, NUMERIC_CONST, PLUS, MINUS, ASSIGN, FUNCTION, FOR, RETURN, COMA,
         ARITHMETIC_BRACKET_OPEN, ARITHMETIC_BRACKET_CLOSE, IF, ELSE, AND, OR, MORE, LESS, EQUAL, NOT_EQUAL,
         MULTIPLICATION, DIVIDE, EOF, END_OP};
-    enum VariableType { NUMERIC, STRING, UNDEFINE};
+    enum VariableType { NUMERIC, STRING, UNDEFINE, REGEX};
     class Token
     {
         public TokenType type;
@@ -25,6 +25,15 @@ namespace Interpreter
         public TokenVariable ConvertToTokenVariable(string nameVar)
         {
             return new TokenVariable(nameVar) { type = TokenType.VARIABLE, varType = VariableType.NUMERIC, data = this.data };
+        }
+    }
+
+    class TokenRegex : TokenVariable
+    {
+        public TokenRegex(string name) : base(name)
+        {
+            this.type = TokenType.VARIABLE;
+            this.varType = VariableType.REGEX;
         }
     }
 
