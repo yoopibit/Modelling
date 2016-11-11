@@ -46,7 +46,6 @@ def main ()
 }
 
 ----------------------
-NOT works!
 def f(result_reg)
 {
 	print("result " + "of " + "regex = ");
@@ -56,11 +55,10 @@ def f(result_reg)
 def main () 
 {
     pat = "[a-zA-Z]+ (\d+)";
-    s = "the independency day celebrated in  may 32";
+    s = "the day of independence celebrated on july 4th in USA and on August 24 in Ukraine";
     res = regex(pat, s);
     f(res);
 }
-
 
 ----------------------
 

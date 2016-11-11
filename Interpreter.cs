@@ -326,8 +326,8 @@ namespace Interpreter
                     nextToken = ProcessFunction(tree, ref i,ref nextToken);
                     if (nextToken == null)
                         throw new Exception("Expected return value in function, Line:" + i);
-                    (currentToken as TokenVariable).data = (nextToken as TokenRegex).data;
-                    (currentToken as TokenVariable).varType = VariableType.REGEX;
+                    (currentToken as TokenVariable).data = (nextToken as TokenVariable).data;
+                    (currentToken as TokenVariable).varType = (nextToken as TokenVariable).varType;
                     nextToken = GetNextToken(ref i, tree);
                     type = nextToken.type;
                 }
@@ -338,15 +338,26 @@ namespace Interpreter
                 {
                     ArichmetichTree arTree = new ArichmetichTree(currentToken as TokenVariable);
                     tree.next = arTree;
-                    while (nextToken.type != TokenType.END_OP && nextToken.type != TokenType.COMA && nextToken.type != TokenType.ARITHMETIC_BRACKET_CLOSE)
+                    int numBracket = nextToken.type == TokenType.ARITHMETIC_BRACKET_OPEN ? 1 : 0;
+
+                    while (nextToken.type != TokenType.END_OP && nextToken.type != TokenType.COMA && (nextToken.type != TokenType.ARITHMETIC_BRACKET_CLOSE || numBracket == 0))
                     {
                         arTree.PutToken(nextToken);
                         nextToken = GetNextToken(ref i, tree);
-                        if (nextToken.type == TokenType.FUNCTION)
+                        
+switch (nextToken.type)
                         {
-                            nextToken = ProcessFunction(tree, ref i, ref nextToken);
-                            if (nextToken == null)
-                                throw new Exception("Expected return value in function, Line:" + i);
+                            case TokenType.ARITHMETIC_BRACKET_OPEN:
+                                numBracket++;
+                                break;
+                            case TokenType.ARITHMETIC_BRACKET_CLOSE:
+                                numBracket--;
+                                break;
+                            case TokenType.FUNCTION:
+                                nextToken = ProcessFunction(tree, ref i, ref nextToken);
+                                if (nextToken == null)
+                                    throw new Exception("Expected return value in function, Line:" + i);
+                                break;
                         }
                     }
                 }
