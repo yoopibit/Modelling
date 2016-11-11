@@ -197,3 +197,17 @@ def main()
 
        }
 }
+
+--------------------------------
+def main()
+{
+	i = 2;
+	j = 5;
+	k = (i + j) * 2;
+	print("k = (i + j) * 2, i = " + str(i) + " j = " + str(j) + ";   k = " + str(k));
+       
+       k = i + j * 2;
+       print("                        ");
+	print("k = i + j * 2, i = " + str(i) + " j = " + str(j) + ";   k = " + str(k));
+      
+}
